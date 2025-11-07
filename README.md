@@ -7,13 +7,12 @@ Proyecto personal para comparar precios de supermercados (Mercadona, Bonpreu, Co
 ## 1. Lanzar la web
 
 
+Lanzar la web con Uvicorn desde el path del proyecto:
 ```bash
-
-Ir a la carpeta de la web:
-cd pagina_web
-
-Lanzar la web con Uvicorn:
-uvicorn app:app --reload
+uvicorn pagina_web.app:app --reload
+```
 
 Abrir en el navegador:
+```bash
 http://127.0.0.1:8000
+```
