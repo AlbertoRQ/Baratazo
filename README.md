@@ -4,21 +4,10 @@ Proyecto personal para comparar precios de supermercados (Mercadona, Bonpreu, Co
 
 ---
 
-## 1. Entorno
+## 1. Lanzar la web
 
-### Activar entorno y situarse en el proyecto
 
 ```bash
-conda activate "alberto porfavor gracias"
-cd "C:/Users/alber/OneDrive/Desktop/Proyectos/Baratazo"
-
-
-
-Después abrir en el navegador:
-
-http://127.0.0.1:8000
-http://localhost:8000
-
 
 Ir a la carpeta de la web:
 cd pagina_web
