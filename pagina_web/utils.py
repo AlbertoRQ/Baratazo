@@ -51,7 +51,7 @@ def matches_query(title: str, query: str) -> bool:
     Ejemplos:
     - "pan" NO matchea "pañales"
     - "pan" SÍ matchea "pan de molde"
-    - "pan de barra" SÍ matchea "barra de pan"
+    - "pan de barra" SÍ matchea "barra de pan" y NO "pan de molde"
     - "leche semidesnatada" NO matchea "leche entera"
     """
     q_tokens = tokens(query)
@@ -62,7 +62,6 @@ def matches_query(title: str, query: str) -> bool:
     if not t_tokens:
         return False
 
-    # todas las palabras de la búsqueda deben encontrar pareja en el título
     return all(
         any(_token_match(q, t) for t in t_tokens)
         for q in q_tokens
