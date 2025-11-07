@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Baratazo · {% block title %}{% endblock %}</title>
+
+  <style>
+    /* =========================
+       1) Variables (paleta)
+       ========================= */
+    :root{
+      --bg:#2b2b2e;
+      --fg:#e7e7ea;
+      --muted:#a4a4ad;
+      --line:#23232a;
+
+      --surface:#141418; /* fondos de inputs / tarjetas oscuras */
+      --chip:#1c1c22;
+      --chip-b:#2b2b33;
+
+      --btn:#2d6cdf;     /* color de botones */
+      --link:#9ddbff;    /* color de enlaces */
+    }
+
+    /* =========================
+       2) Base / Reset mínimo
+       ========================= */
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--fg);
+      font-family:system-ui, Segoe UI, Roboto, Ubuntu, sans-serif;
+    }
+    a{
+      color:var(--link);
+      text-decoration:none;
+    }
+    a:hover{ text-decoration:underline; }
+
+    /* =========================
+       3) Layout principal
+       ========================= */
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:16px 20px;
+      border-bottom:1px solid var(--line);
+    }
+    .container{
+      max-width:980px;
+      margin:0 auto;
+      padding:20px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+    @media (max-width:760px){
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    /* =========================
+       4) Controles (inputs/botones)
+       ========================= */
+    input[type="text"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid var(--line);
+      background:var(--surface);
+      color:var(--fg);
+    }
+
+    /* === SELECT (listas desplegables) === */
+    select{
+      width:100%;
+      padding:10px 36px 10px 12px;   /* deja hueco para la flecha a la derecha */
+      border-radius:8px;
+      border:1px solid var(--line);
+      background:var(--surface);
+      color:var(--fg);
+      cursor:pointer;
+
+      /* quita el look nativo y pone el nuestro */
+      appearance:none;               /* estándar */
+      -webkit-appearance:none;       /* Safari */
+      -moz-appearance:none;          /* Firefox */
+
+      /* flecha (chevron) en SVG incrustado para que respete el color del tema */
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23a4a4ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 18px;
+    }
+
+    select:hover{ filter:brightness(0.97); }
+
+    select:focus{
+      outline:2px solid #9ddbff;     /* color de foco accesible */
+      outline-offset:2px;
+    }
+
+    select:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+
+    /* Variantes de tamaño opcionales */
+    .select--sm{ padding:6px 32px 6px 10px; border-radius:6px; font-size:.92rem; }
+    .select--lg{ padding:12px 40px 12px 14px; border-radius:10px; font-size:1.02rem; }
+
+    button{
+      background:var(--btn);
+      color:#ffffff;
+      border:0;
+      border-radius:8px;
+      padding:10px 14px;
+      cursor:pointer;
+      transition:filter .15s ease, transform .06s ease;
+    }
+    button:hover{ filter:brightness(0.95); }
+    button:active{ transform:translateY(1px); }
+
+    /* =========================
+       5) Tabla
+       ========================= */
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:16px;
+    }
+    th, td{
+      padding:10px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+    }
+
+    /* =========================
+       6) Componentes
+       ========================= */
+    img.product{
+      max-width:260px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#111;
+    }
+    .pill{
+      display:inline-block;
+      background:var(--chip);
+      border:1px solid var(--chip-b);
+      border-radius:999px;
+      padding:4px 10px;
+    }
+
+    /* =========================
+       7) Utilidades
+       ========================= */
+    .muted{ color:var(--muted); }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+
+<body>
+  <header>
+    <div><a href="/">🛒 Baratazo</a></div>
+    <nav class="muted">Comparador</nav>
+  </header>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

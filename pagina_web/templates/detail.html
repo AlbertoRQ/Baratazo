@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Detalle{% endblock %}
+{% block content %}
+  {% if product %}
+    <h1 style="margin-top:0">{{ product.title }}</h1>
+    <div class="grid">
+      <div>
+        {% if product.image %}
+          <img class="product" src="{{ product.image }}" alt="{{ product.title }}">
+        {% else %}
+          <div class="muted">Sin imagen</div>
+        {% endif %}
+      </div>
+      <div>
+        <p><strong>Precio unidad:</strong> {{ "%.2f"|format(product.price_unit) }} €</p>
+        <p><strong>Precio kg:</strong> {{ "%.2f"|format(product.price_kg) }} €</p>
+        <p><strong>Tienda:</strong> <span class="pill">{{ product.store }}</span></p>
+        <p><a href="/">← Volver</a></p>
+      </div>
+    </div>
+  {% else %}
+    <p>No encontrado. <a href="/">Volver</a></p>
+  {% endif %}
+{% endblock %}

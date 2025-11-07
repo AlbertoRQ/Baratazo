@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+  <form method="get" action="/" class="grid" onsubmit="return false;">
+    <input id="search" type="text" name="q" placeholder="Buscar producto... (min. 2 letras)" value="{{ q }}">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px">
+      <select id="storeSelect">
+        <option value="">Todas las tiendas</option>
+      </select>
+      <select id="sortSelect">
+        <option value="recientes">Más recientes</option>
+        <option value="unit_asc">€/unidad ↑</option>
+        <option value="unit_desc">€/unidad ↓</option>
+        <option value="kg_asc">€/kg ↑</option>
+        <option value="kg_desc">€/kg ↓</option>
+      </select>
+    </div>
+    <div><button type="button" id="clearBtn">Limpiar</button></div>
+  </form>
+
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+    <div>
+      <div id="hint" class="muted">
+        Empieza a escribir para ver resultados. Usa al menos 2 letras.
+      </div>
+
+      <!-- ÚNICA tabla de resultados -->
+      <table id="tbl" style="display:none">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>€/unidad</th>
+            <th>€/kg</th>
+            <th>Tienda</th>
+            <th></th>
+            <th>Añadir</th>
+          </tr>
+        </thead>
+        <tbody id="results">
+          {% for p in items %}
+            <tr>
+              <td><a href="/product/{{ p.id }}">{{ p.title }}</a></td>
+              <td>{{ "%.2f"|format(p.price_unit) }}</td>
+              <td>{{ "%.2f"|format(p.price_kg) }}</td>
+              <td><span class="pill">{{ p.store }}</span></td>
+              <td><a href="/product/{{ p.id }}">Ver</a></td>
+              <td>
+                <button type="button" class="addBtn"
+                  data-id="{{ p.id }}"
+                  data-title="{{ p.title|urlencode }}"
+                  data-price="{{ p.price_unit }}"
+                  data-store="{{ p.store|urlencode }}">Añadir</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <aside id="listaPanel" style="border-left:1px solid var(--line);padding-left:12px">
+      <h3 style="margin-top:0">Mi lista</h3>
+
+      <div id="listaVacia" class="muted">Vacía. Añade productos →</div>
+
+      <!-- Vista "ticket" -->
+      <div id="ticketBox" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button id="btnPrint" type="button">Imprimir ticket</button>
+          <button id="btnDownload" type="button">Descargar .txt</button>
+          <button id="btnClear" type="button" style="margin-left:auto;background:#c23a3a">Vaciar</button>
+        </div>
+
+        <div style="background:#111;border:1px solid var(--line);border-radius:12px;padding:12px">
+          <div style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:13px;white-space:pre-wrap" id="ticketText"></div>
+        </div>
+
+        <ul id="lista" style="list-style:none;padding:0;margin:12px 0 0 0"></ul>
+
+        <div id="ticketTotals" style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+          <div class="muted" id="ticketCount"></div>
+          <div style="font-weight:600">TOTAL: € <span id="ticketTotal">0.00</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- estilos impresión del ticket -->
+    <style>
+    @media print{
+      header,.grid, #listaPanel button, #tbl, #hint { display:none !important; }
+      #ticketBox{ display:block !important; }
+      #ticketText{ font-size:12px; }
+      body{ background:#fff; color:#000; }
+      .pill{ border:0; }
+    }
+    </style>
+
+  </div>
+
+  <script>
+    const storeSelect = document.getElementById('storeSelect');
+    const sortSelect  = document.getElementById('sortSelect');
+    const input = document.getElementById('search');
+    const clearBtn = document.getElementById('clearBtn');
+    const resultsBody = document.getElementById('results');
+    const table = document.getElementById('tbl');
+    const hint = document.getElementById('hint');
+
+    function eur2(v){
+      if(v === null || v === undefined || isNaN(v)) return "";
+      return Number(v).toFixed(2);
+    }
+
+    function eur(v){ return eur2(v); } // alias corto
+
+    function nowStr(){
+      const d = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function buildTicketLines(cartObj){
+      const ids = Object.keys(cartObj);
+      const lines = [];
+      lines.push('********** BARATAZO **********');
+      lines.push(`Fecha: ${nowStr()}`);
+      lines.push('------------------------------');
+      ids.forEach(id=>{
+        const it = cartObj[id];
+        const qty = it.qty;
+        const pu  = Number(it.price_unit)||0;
+        const sub = qty*pu;
+        // líneas tipo: "x2  Título" y debajo "    @ 1,23 = 2,46  [Tienda]"
+        lines.push(`x${qty}  ${it.title}`);
+        lines.push(`    @ ${eur(pu)}  =  ${eur(sub)}   [${it.store}]`);
+      });
+      lines.push('------------------------------');
+      const totItems = ids.reduce((a,k)=>a+cartObj[k].qty,0);
+      const total = ids.reduce((a,k)=>a+cartObj[k].qty*(Number(cartObj[k].price_unit)||0),0);
+      lines.push(`Artículos: ${totItems}`);
+      lines.push(`TOTAL: € ${eur(total)}`);
+      lines.push('******************************');
+      return { text: lines.join('\n'), totItems, total };
+    }
+
+
+    function renderRows(items){
+      resultsBody.innerHTML = items.map(p => `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${p.image ? `<img src="${p.image}" alt="" style="width:40px;height:40px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#111;">` : ``}
+              <a href="/product/${p.id}">${p.title}</a>
+            </div>
+          </td>
+          <td>${eur2(p.price_unit)}</td>
+          <td>${eur2(p.price_kg)}</td>
+          <td><span class="pill">${p.store}</span></td>
+          <td><a href="/product/${p.id}">Ver</a></td>
+          <td>
+            <button type="button" class="addBtn"
+              data-id="${p.id}"
+              data-title="${encodeURIComponent(p.title)}"
+              data-price="${p.price_unit}"
+              data-store="${encodeURIComponent(p.store)}">Añadir</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+
+    function setState(hasData, loading=false){
+      if(loading){
+        hint.textContent = 'Buscando…';
+        hint.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+      if(hasData){
+        hint.style.display = 'none';
+        table.style.display = 'table';
+      }else{
+        table.style.display = 'none';
+        const q = (input.value || '').trim();
+        hint.textContent = q.length < 2
+          ? 'Empieza a escribir para ver resultados. Usa al menos 2 letras.'
+          : 'Sin resultados.';
+        hint.style.display = 'block';
+      }
+    }
+
+    async function search(q){
+      if(!q || q.trim().length < 2){
+        renderRows([]);
+        setState(false);
+        return;
+      }
+      setState(false, true);
+      try{
+        const url = `/api/products?q=${encodeURIComponent(q)}&store=${encodeURIComponent(storeSelect.value||'')}&sort=${encodeURIComponent(sortSelect.value||'recientes')}`;
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        renderRows(data);
+        setState(data && data.length > 0);
+      }catch(err){
+        console.error('Error buscando:', err);
+        renderRows([]); setState(false);
+        hint.textContent = 'Error buscando. Intenta de nuevo.';
+      }
+    }
+
+    // debounce
+    let t = null;
+    input.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => search(input.value), 250);
+    });
+
+    storeSelect.addEventListener('change',  ()=> search(input.value));
+    sortSelect.addEventListener('change',   ()=> search(input.value));
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      renderRows([]);
+      setState(false);
+      input.focus();
+    });
+
+    async function loadStores(){
+      try{
+        const res = await fetch('/api/stores');
+        const stores = await res.json();
+        const opts = ['<option value="">Todas las tiendas</option>']
+          .concat(stores.map(s => `<option value="${s}">${s}</option>`));
+        storeSelect.innerHTML = opts.join('');
+      }catch(e){
+        console.warn('No pude cargar tiendas', e);
+      }
+    }
+
+    (function bootstrap(){
+      loadStores();  // ← NUEVO
+      const initial = (input.value || '').trim();
+      if(initial.length >= 2){
+        search(initial);
+      }else{
+        setState(false);
+      }
+    })();
+
+    // ---- Lista lateral (localStorage) ----
+    const LS_KEY = 'baratazo_lista';
+    let cart = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+
+    function saveCart(){ localStorage.setItem(LS_KEY, JSON.stringify(cart)); }
+
+    function renderList(){
+      const ul = document.getElementById('lista');
+      const empty = document.getElementById('listaVacia');
+      const ticketBox = document.getElementById('ticketBox');
+      const ids = Object.keys(cart);
+
+      if(ids.length === 0){
+        ul.innerHTML = '';
+        empty.style.display = 'block';
+        ticketBox.style.display = 'none';
+        return;
+      }
+
+      empty.style.display = 'none';
+      ticketBox.style.display = 'block';
+
+      // lista visual con subtotales y controles
+      ul.innerHTML = ids.map(id => {
+        const it = cart[id];
+        const sub = (Number(it.price_unit)||0)*it.qty;
+        return `
+          <li data-id="${id}" style="border:1px dashed var(--line);border-radius:10px;padding:8px;margin-bottom:8px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1">
+                <div><strong>${it.title}</strong></div>
+                <div class="muted">${it.store}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted">€/u ${eur(it.price_unit)}</div>
+                <div>€ <strong>${eur(sub)}</strong></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px">
+              <button class="qtyMinus">−</button>
+              <input class="qtyInput" type="number" min="1" step="1" value="${it.qty}" style="width:56px;text-align:center;background:#141418;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 6px">
+              <button class="qtyPlus">+</button>
+              <button class="removeItem" style="background:#c23a3a">Quitar</button>
+            </div>
+          </li>`;
+      }).join('');
+
+      // ticket de texto + totales
+      const { text, totItems, total } = buildTicketLines(cart);
+      document.getElementById('ticketText').textContent = text;
+      document.getElementById('ticketCount').textContent = `Artículos: ${totItems}`;
+      document.getElementById('ticketTotal').textContent = eur(total);
+    }
+
+
+    function addToList(p){
+      const id = String(p.id);
+      if(!cart[id]){
+        cart[id] = { title: p.title, price_unit: p.price_unit, store: p.store, qty: 1 };
+      } else {
+        cart[id].qty += 1;
+      }
+      saveCart();
+      renderList();
+    }
+
+    // Añadir desde resultados (delegado)
+    resultsBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.addBtn');
+      if(!btn) return;
+      const p = {
+        id: btn.dataset.id,
+        title: decodeURIComponent(btn.dataset.title),
+        price_unit: parseFloat(btn.dataset.price),
+        store: decodeURIComponent(btn.dataset.store)
+      };
+      addToList(p);
+    });
+
+    // Controles de la lista (delegado)
+    document.getElementById('lista').addEventListener('click', (e) => {
+      const li = e.target.closest('li[data-id]');
+      if(!li) return;
+      const id = li.dataset.id;
+      if(e.target.closest('.qtyPlus')) {
+        cart[id].qty += 1;
+        saveCart(); renderList();
+      } else if(e.target.closest('.qtyMinus')) {
+        cart[id].qty = Math.max(1, cart[id].qty - 1);
+        saveCart(); renderList();
+      } else if(e.target.closest('.removeItem')) {
+        delete cart[id];
+        saveCart(); renderList();
+      }
+    });
+
+    // input directo de cantidad
+    document.getElementById('lista').addEventListener('input', (e)=>{
+      const inputQty = e.target.closest('.qtyInput');
+      if(!inputQty) return;
+      const li = e.target.closest('li[data-id]');
+      const id = li.dataset.id;
+      const v = Math.max(1, parseInt(inputQty.value||'1',10));
+      cart[id].qty = v;
+      saveCart(); renderList();
+    });
+
+    // botones del ticket
+    document.getElementById('btnClear').addEventListener('click', ()=>{
+      if(confirm('¿Vaciar la lista?')){
+        cart = {};
+        saveCart(); renderList();
+      }
+    });
+
+    document.getElementById('btnPrint').addEventListener('click', ()=>{
+      window.print();
+    });
+
+    document.getElementById('btnDownload').addEventListener('click', ()=>{
+      const { text } = buildTicketLines(cart);
+      const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `baratazo_ticket_${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // al cargar
+    renderList();
+  </script>
+{% endblock %}
