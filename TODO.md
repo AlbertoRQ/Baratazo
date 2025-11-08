@@ -40,7 +40,7 @@ Documento para listar errores, cosas por revisar y mejoras futuras.
 ## 5. Infra / orden del proyecto
 
 - [ ] Revisar y limpiar carpetas `scrapers/old` y notebooks que ya no se usen.
-- [ ] Mejorar `README.md`:
+- [X] Mejorar `README.md`:
 
 ---
 
