@@ -33,12 +33,10 @@ def health() -> Dict[str, str]:
 
 # ========= Helpers DB =========
 
-
 def _fetch_all(q: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(text(q), params).mappings().all()
         return [dict(r) for r in rows]
-
 
 def _fetch_one(q: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     with engine.connect() as conn:
@@ -48,29 +46,34 @@ def _fetch_one(q: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 # ========= API auxiliar =========
 
-
 @app.get("/api/stores")
 def api_stores() -> List[str]:
-    qsql = "SELECT DISTINCT store FROM producto ORDER BY store"
+    # >>> CAMBIO: ahora la tabla es product <<<
+    qsql = "SELECT DISTINCT store FROM product ORDER BY store"
     rows = _fetch_all(qsql, {})
     return [r["store"] for r in rows]
 
 
 # ========= HTML =========
 
-
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, q: Optional[str] = None) -> HTMLResponse:
     items: List[Dict[str, Any]] = []
 
     if q and len(q.strip()) >= 2:
-        # Traemos de TODOS los supermercados y filtramos en Python
+        # >>> CAMBIO: ahora leemos de product. Usamos ROWID para “recientes”.
         qsql = """
-            SELECT rowid AS id, title, price_unit, price_kg, image, store
-            FROM producto
-            ORDER BY rowid DESC
+            SELECT 
+              id,                -- TEXT PK
+              title, 
+              price_unit, 
+              price_kg, 
+              image, 
+              store,
+              ROWID AS _rowid    -- para ordenar “recientes” en plantilla si hiciera falta
+            FROM product
+            ORDER BY ROWID DESC
         """
-
         rows = _fetch_all(qsql, {})
         items = [r for r in rows if matches_query(r["title"], q)]
 
@@ -81,11 +84,13 @@ def index(request: Request, q: Optional[str] = None) -> HTMLResponse:
 
 
 @app.get("/product/{product_id}", response_class=HTMLResponse)
-def detail(request: Request, product_id: int) -> HTMLResponse:
+def detail(request: Request, product_id: str) -> HTMLResponse:
+    # >>> CAMBIO: id es TEXT, no rowid. Traemos también product_url por si quieres enlazar.
     qsql = """
-        SELECT rowid AS id, title, price_unit, price_kg, image, store
-        FROM producto
-        WHERE rowid = :id
+        SELECT 
+          id, title, price_unit, price_kg, image, store, product_url
+        FROM product
+        WHERE id = :id
     """
     product = _fetch_one(qsql, {"id": product_id})
 
@@ -97,7 +102,6 @@ def detail(request: Request, product_id: int) -> HTMLResponse:
 
 # ========= API JSON =========
 
-
 @app.get("/api/products")
 def api_products(
     q: Optional[str] = None,
@@ -107,7 +111,7 @@ def api_products(
     params: Dict[str, Any] = {}
     clauses: List[str] = []
 
-    # ---- filtro tienda en SQL (igual que al principio) ----
+    # filtro tienda
     if store:
         store_norm = store.strip().lower()
         if store_norm not in ("todos", "todas", "all", "0"):
@@ -116,20 +120,21 @@ def api_products(
 
     where_sql = (" WHERE " + " AND ".join(clauses)) if clauses else ""
 
+    # >>> CAMBIO: tabla product y usamos ROWID para “recientes”
     qsql = f"""
-        SELECT rowid AS id, title, price_unit, price_kg, image, store
-        FROM producto
+        SELECT 
+          id, title, price_unit, price_kg, image, store, ROWID AS _rowid
+        FROM product
         {where_sql}
-        ORDER BY rowid DESC
+        ORDER BY ROWID DESC
     """
-    
     items = _fetch_all(qsql, params)
 
-    # ---- filtro texto con matches_query (todos los supers) ----
+    # filtro texto
     if q and len(q.strip()) >= 2:
         items = [it for it in items if matches_query(it["title"], q)]
 
-    # ---- helpers precio ----
+    # helpers precio
     def _as_float(value: Any, default: float) -> float:
         if value is None:
             return default
@@ -144,7 +149,7 @@ def api_products(
             v = it.get(secondary)
         return _as_float(v, default)
 
-    # ---- ordenación ----
+    # ordenación
     if sort == "unit_asc":
         items.sort(key=lambda it: _price_for(it, "price_unit", "price_kg", 1e12))
     elif sort == "unit_desc":
@@ -154,6 +159,10 @@ def api_products(
     elif sort == "kg_desc":
         items.sort(key=lambda it: _price_for(it, "price_kg", "price_unit", -1.0), reverse=True)
     else:  # recientes
-        items.sort(key=lambda it: it["id"], reverse=True)
+        items.sort(key=lambda it: it.get("_rowid", 0), reverse=True)
+
+    # Limpia la clave interna si no quieres exponerla
+    for it in items:
+        it.pop("_rowid", None)
 
     return items

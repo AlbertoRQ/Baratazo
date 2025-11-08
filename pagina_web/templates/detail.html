@@ -12,9 +12,28 @@
         {% endif %}
       </div>
       <div>
-        <p><strong>Precio unidad:</strong> {{ "%.2f"|format(product.price_unit) }} €</p>
-        <p><strong>Precio kg:</strong> {{ "%.2f"|format(product.price_kg) }} €</p>
+        <p><strong>Precio unidad:</strong>
+          {% if product.price_unit is not none %}
+            {{ "%.2f"|format(product.price_unit) }} €
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </p>
+
+        <p><strong>Precio kg:</strong>
+          {% if product.price_kg is not none %}
+            {{ "%.2f"|format(product.price_kg) }} €
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </p>
+
         <p><strong>Tienda:</strong> <span class="pill">{{ product.store }}</span></p>
+
+        {% if product.product_url %}
+          <p><a href="{{ product.product_url }}" target="_blank" rel="noopener">Ver en la tienda →</a></p>
+        {% endif %}
+
         <p><a href="/">← Volver</a></p>
       </div>
     </div>
